@@ -1,0 +1,4 @@
+(executable
+ (public_name test_OCaml)
+ (name main)
+ (libraries test_OCaml))
