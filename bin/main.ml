@@ -1,42 +1,59 @@
-let _ =
-  let str = Marshal.to_string "((TacAlias Coq.ssr.ssreflect.by_#_2AAA68AE ((TacML (CAst (Reference (CAst $1))))) (CAst (TacGeneric (TacAlias Coq.ssr.ssreflect.move_#_#_2AAA68AA ((TacML (CAst (Reference (CAst $1)) (Reference (CAst $2))))) (CAst (TacGeneric (CAst (CRef (CAst contra))) notb_notc (CAst (CRef (CAst negbT)))) (TacGeneric)))))))	(State (Goal (Prod _ Relevant (Prod _ Relevant (App (Const Coq.Init.Datatypes.is_true) (Var c)) (App (Const Coq.Init.Datatypes.is_true) (Var b))) (Prod _ Relevant (App (Ind Coq.Init.Logic.eq) (Ind Coq.Init.Datatypes.bool) (Var b) (Construct Coq.Init.Datatypes.false Coq.Init.Datatypes.bool)) (App (Const Coq.Init.Datatypes.is_true) (App (Const Coq.Init.Datatypes.negb) (Var c)))))) (Hypotheses ((b (Ind Coq.Init.Datatypes.bool)) (c (Ind Coq.Init.Datatypes.bool)))))" [Marshal.No_sharing] in 
-  print_int@@Hashtbl.hash_param 255 255 str; print_newline ()
-  (* print_string str *)
+type cl = 
+  | S        
+  | K
+  | I
+  | App of cl * cl
+  | Var of string
+  (* | List of cl list *)
 
+let root_reduce term = 
+  match term with
+  | App (App (App (S, u) , v), w) -> App (App(u, w), App(v, w)), true
+  | App (App (K, u), _) -> u, true
+  | App (I, t) -> t, true
+  | _ -> term, false
 
-let _ = 
-  let ic = open_in_bin "/home/zhang/test_OCaml/byte.txt" in
-  let n = in_channel_length(ic) in
-  let b = Buffer.create(n) in
-  let _= Buffer.add_channel(b)(ic)(n) in
-  let _= close_in ic in
-  let line = Buffer.contents b in
-  print_endline line;
-  print_int@@Hashtbl.hash_param 255 255 line; print_newline () 
+let rec left_out_reduce term =
+  let term', reduced = root_reduce term in
+  if reduced then term', true else 
+    match term with
+    | App (s, t) -> (
+        match left_out_reduce s with
+        | s', true -> App (s', t), true
+        | _ -> (
+          match left_out_reduce t with
+          | t', true -> App (s, t'), true
+          | _ -> term, false
+      ))
+    | _ -> term, false
 
-let _ = 
-  let ic = open_in_bin "/home/zhang/test_OCaml/8604636_byte.txt" in
-  let n = in_channel_length(ic) in
-  let b = Buffer.create(n) in
-  let _= Buffer.add_channel(b)(ic)(n) in
-  let _= close_in ic in
-  let line = Buffer.contents b in
-  print_endline line;
-  print_int@@Hashtbl.hash_param 255 255 line; print_newline () 
+let rec cl_str t = 
+  match t with
+  | S -> "S"
+  | K -> "K"
+  | I -> "I"
+  | App (t1, t2) -> "("^cl_str t1^cl_str t2^")"
+  | Var x -> x
+  (* | List ts -> "("^ List.fold_left (fun acc t' -> acc ^ cl_str t') "" ts ^")" *)
 
-let _ = 
-  let ic = open_in_bin "/home/zhang/test_OCaml/100893355_byte.txt" in
-  let n = in_channel_length(ic) in
-  let b = Buffer.create(n) in
-  let _= Buffer.add_channel(b)(ic)(n) in
-  let _= close_in ic in
-  let line = Buffer.contents b in
-  print_int@@Hashtbl.hash_param 255 255 line; print_newline () 
+let print_cl t = print_endline@@cl_str t
 
+let left_out_reduces_to t1 t2 =
+  let rec aux t = 
+    match left_out_reduce t with
+    | t',  true -> print_cl t'; if t' = t2 then print_endline "success" else aux t'
+    | t', false -> print_cl t'; if t' = t2 then print_endline "success" else print_endline "fail"
+  in
+  print_cl t1; aux t1
 
+let b = App(App(S, (App (K, S))), K)
+let c = App(App(S, (App (App (b, b), S))), (App (K, K)))
+let y = App(App (App (b, (App (S, I))), (App(App(S, I), I))), (App(App(b, (App(S, I))),(App(App(S, I), I)))))
+(* let _ = left_out_reduces_to (App(App(App(b, Var "x"), Var "y"), Var "z")) (App(Var "x", App(Var "y", Var "z"))) *)
+(* let _ = left_out_reduces_to (App(App(App(c, Var "x"), Var "y"), Var "z")) (App(App(Var "x", Var "z"), Var "y")) *)
+let _ = left_out_reduces_to (App(y, Var "x")) (App(Var "x", App(y ,Var "x"))) 
+(* let _ = left_out_reduces_to (App((App (S, b)), App (K ,I))) (App(K, I)) *)
+(* let _ = left_out_reduces_to 
+  (App (App (App (App (App (App (App (S, S), S), S), S), S), S), S))
+  (App (App(S, S), App(App(S, S), App(App(S, S), App(S, S))))) *)
 
-
-(* let _ =
-  let ic = open_in "/home/zhang/test_OCaml/8604636_byte.txt" in
-  let line = input_line ic in 
-  print_int@@Hashtbl.hash_param 255 255 line; print_newline () *)

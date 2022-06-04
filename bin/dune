@@ -1,4 +1,9 @@
 (executable
- (public_name test_OCaml)
- (name main)
- (libraries test_OCaml))
+  (public_name test_OCaml)
+  (name main)
+  (libraries sexplib) 
+)
+
+(env
+  (dev
+    (flags (:standard -warn-error -A))))
