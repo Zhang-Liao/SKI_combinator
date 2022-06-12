@@ -6,8 +6,9 @@ type cl =
   | I
   | App of cl * cl
 
-let b = App(App(S, (App (K, S))), K)
-let c = App(App(S, (App (App (b, b), S))), (App (K, K)))
+let b_comb = App(App(S, (App (K, S))), K)
+let c_comb = App(App(S, (App (App (b_comb, b_comb), S))), (App (K, K)))
+let test = App (App (S, K), K)
 
 type cl_type = 
   | Arrow of cl_type * cl_type
@@ -48,22 +49,43 @@ let rec print_constraint c =
   | [] -> ()
   | (t1, t2)::tl -> printf "%s = %s\n" (cl_type2str t1) (cl_type2str t2); print_constraint tl
 
-let _ = 
-  let c, _ = mk_constraint c (mk_type "root" 0 "") 1 [] in
-  print_constraint c
+
+(* let rec print_subst s = 
+  match c with
+  | [] -> ()
+  | (t1, t2)::tl -> printf "%s = %s\n" (cl_type2str t1) (cl_type2str t2); print_constraint tl *)
 
 let rec not_fv var typ =
   match typ with
   | Type _ -> if var = typ then false else true
   | Arrow (a1, a2) -> not_fv var a1 &&  not_fv var a2
 
+
+let rec subst_typ t a b =
+  match t with
+  | Type _ -> if t = a then b else t
+  | Arrow (t1, t2) -> Arrow (subst_typ t1 a b, subst_typ t2 a b)
+
+let rec subst_constraint c a b =
+  match c with
+  | (t1, t2) :: tl -> (subst_typ t1 a b, subst_typ t2 a b)::subst_constraint tl a b  
+  | [] -> []
+
 let rec unify constraints subst = 
   match constraints with 
   | (t1, t2)::tl -> (
       if t1 = t2 then unify tl subst else 
         match t1, t2 with
-        | Type ty1, _ -> if not_fv t1 t2 then unify tl ((t1, t2)::substs) else
-        | _, Type ty2 -> ()
-        | Arrow (ty1, ty2), Arrow(ty1', ty2') -> ()
+        | Type _, _ when not_fv t1 t2  -> unify (subst_constraint tl t1 t2) ((t1, t2)::subst)
+        | _, Type _ when not_fv t2 t1 -> unify (subst_constraint tl t2 t1) ((t2, t1)::subst)
+        | Arrow (ty1, ty2), Arrow(ty1', ty2') -> unify ((ty1, ty1')::(ty2, ty2')::tl) (subst)
+        | _ -> failwith "cannot unify"
     )
-  | [] -> []
+  | [] -> subst
+
+
+let _ = 
+  let c, _ = mk_constraint c_comb (mk_type "root" 0 "") 1 [] in
+  let _ = print_endline "constraint"; print_constraint c in
+  let substs = unify c [] in
+  print_endline "\nsubstution"; print_constraint substs 

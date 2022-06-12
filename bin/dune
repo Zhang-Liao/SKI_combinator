@@ -1,6 +1,6 @@
 (executable
   (public_name test_OCaml)
-  (name main)
+  (name principle_type)
   (libraries sexplib) 
 )
 
